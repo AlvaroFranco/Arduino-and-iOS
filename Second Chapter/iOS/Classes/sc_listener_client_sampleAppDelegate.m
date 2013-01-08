@@ -1,0 +1,71 @@
+//
+//  sc_listener_client_sampleAppDelegate.m
+//  sc_listener_client_sample
+//
+//  Created by Jared Kells on 10/02/10.
+//  Copyright __MyCompanyName__ 2010. All rights reserved.
+//
+
+#import "sc_listener_client_sampleAppDelegate.h"
+#import "sc_listener_client_sampleViewController.h"
+#import "SCListener.h"
+
+@implementation sc_listener_client_sampleAppDelegate
+
+@synthesize window;
+@synthesize viewController;
+@synthesize timer;
+
+- (void)applicationDidFinishLaunching:(UIApplication *)application {    
+	AudioSessionInitialize(NULL,NULL,NULL,NULL);
+	[[SCListener sharedListener] listen];
+	timer = [NSTimer scheduledTimerWithTimeInterval: 0.2 target: self selector: @selector(tick:) userInfo:nil repeats: YES];
+	
+    // Override point for customization after app launch    
+    [window addSubview:viewController.view];
+    [window makeKeyAndVisible];
+}
+
+- (void)tick: (NSTimer*) _timer {
+	Float32 peak_power = [[SCListener sharedListener] peakPower];
+	Float32 average_power = [[SCListener sharedListener] averagePower];
+	Float32 frequency = [[SCListener sharedListener] frequency];
+	
+	if(average_power < 0.007)
+		return;
+	
+	[viewController.peak_power_label setText: [NSString stringWithFormat: @"Peak Power %f", peak_power]];
+	[viewController.average_power_label setText: [NSString stringWithFormat: @"Average Power %f", average_power]];
+	[viewController.freq_label setText: [NSString stringWithFormat: @"Frequency %f", frequency]];
+	[viewController.fft_view updateFreqs: [[SCListener sharedListener] freq_db] data2: [[SCListener sharedListener] freq_db_harmonic]];
+	[viewController.fft_view setNeedsDisplay];
+    
+    NSString *urlString = [NSString stringWithFormat:@"http://192.168.2.15/1/%f", peak_power];
+    NSMutableURLRequest *request = [[NSMutableURLRequest alloc] init];
+    [request setURL:[NSURL URLWithString:urlString]];
+    [request setHTTPMethod:@"GET"];
+    [NSURLConnection sendAsynchronousRequest:request queue:nil completionHandler:nil];
+    
+    if (peak_power > 0.01 && peak_power < 0.11) {
+        
+        NSLog(@"1");
+    
+    } else if (peak_power > 0.11 && peak_power < 0.25){
+        
+        NSLog(@"2");
+    } else if (peak_power > 0.25){
+        
+        NSLog(@"3");
+    }
+
+
+}
+
+- (void)dealloc {
+    [viewController release];
+    [window release];
+    [super dealloc];
+}
+
+
+@end
